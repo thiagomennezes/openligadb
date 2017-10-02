@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<meta name="author" content="Thiago Medeiros de Menezes">
+		<title>OpenLigaDB</title>
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/css/bootstrap.min.css" integrity="sha384-/Y6pD6FV/Vv2HJnA6t+vslU6fwYXjCFtcEpHbNJ0lyAFsXTsjBbfaDjzALeQsN6M" crossorigin="anonymous">
+		<script src="https://code.jquery.com/jquery-3.2.1.min.js" crossorigin="anonymous"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.11.0/umd/popper.min.js" integrity="sha384-b/U6ypiBEHpOf/4+1nzFpr53nxSS+GLCkfwBdFNTxtclqqenISfwAzpKaMNFNmj4" crossorigin="anonymous"></script>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta/js/bootstrap.min.js" integrity="sha384-h0AbiXch4ZDo7tp9hKZ4TsHbi047NrKGLO3SEJAg45jXxnGIfYzk4Si90RDIqNm1" crossorigin="anonymous"></script>
+		<script src="https://momentjs.com/downloads/moment-with-locales.min.js" crossorigin="anonymous"></script>
+	</head>
+	<body>
+		<div class="container">
+			<div class="row">
+				<div class="col-9">
+					<br />
+					<h3 class="text-center">Next Upcoming Matches</h3>
+					<br />
+					<table class="table table-striped" id="table-next-upcoming-matches">
+						<thead class="thead-inverse">
+							<tr><th>#</th><th>Match</th><th>Date/Time</th><th>Location</th></tr>
+						</thead>
+						<tbody></tbody>
+					</table>
+					<br />
+					<h3 class="text-center">All Matches</h3>
+					<br />
+					<table class="table table-striped" id="table-all-matches">
+						<thead class="thead-inverse">
+							<tr><th>#</th><th>Match</th><th>Date/Time</th><th>Location</th><th>Result</th></tr>
+						</thead>
+						<tbody></tbody>
+					</table>
+				</div>
+				<div class="col-3">
+					<br />
+					<h3 class="text-center">Win/Loss Ratio</h3>
+					<br />
+					<table class="table table-striped" id="table-win-loss-ratio">
+						<thead class="thead-inverse">
+							<tr><th>#</th><th colspan="2">Team</th><th>W</th><th>L</th></tr>
+						</thead>
+						<tbody></tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+		<script>
+			$(function( ) {
+
+				var count = 0;
+				var matches = null;
+				var year = 2017;
+
+				function build_tds(data) {
+					if(typeof(extra) === undefined)
+						extra = "";
+					var datef = moment(data.MatchDateTime);
+					var locationf = data.Location !== null? data.Location.LocationStadium + ', ' + data.Location.LocationCity : "";
+					var tds = '<td>' + (++count) + '</td> \
+						<td>' + data.Team1.TeamName + ' x ' + data.Team2.TeamName + '</td> \
+						<td>' + datef.format("LLL") + '</td> \
+						<td>' + locationf + '</td>';
+					return tds;
+				}
+
+				function build_table_next_up_coming_matches( ) {
+					count = 0;
+					for(var i = 0; i < matches.length; ++i) {
+						if(matches[i].MatchResults.length === 0 && matches[i].Location !== null) {
+							var tr = '<tr mid=' + matches[i].MatchID + '>' + build_tds(matches[i]) + '</tr>';
+							$("#table-next-upcoming-matches tbody").append(tr);
+						}
+					}
+				}
+
+				function build_table_all_matches( ) {
+					count = 0;
+					for(var i = 0; i < matches.length; ++i) {
+						var mr = matches[i].MatchResults.length == 0 ? "" : matches[i].MatchResults.slice(-1)[0];
+						var points = mr.length == 0? "" : mr.PointsTeam1 + ' x ' + mr.PointsTeam2;  
+						var td = '<td>' + points + '</td>';
+						var tr = '<tr mid=' + matches[i].MatchID + '>' + build_tds(matches[i]) + td + '</tr>';
+						$("#table-all-matches tbody").append(tr);
+					}
+				}
+
+				function build_table_win_loss_ratio( ) {
+					var teams = new Array( );
+					var found = new Array( );
+					for(var i = 0; i < matches.length; ++i) {
+						if(matches[i].MatchResults.length !== 0) {
+							var tid1 = matches[i].Team1.TeamId;
+							var tid2 = matches[i].Team2.TeamId;
+							if($.inArray(tid1, found) === -1) {
+								teams[tid1] = { name: matches[i].Team1.TeamName, ico: '<img src="' + matches[i].Team1.TeamIconUrl + '" />', win: 0, loss: 0 };
+								found.push(tid1);
+							}
+							if($.inArray(tid2, found) === -1) {
+								teams[tid2] = { name: matches[i].Team2.TeamName, ico: '<img src="' + matches[i].Team2.TeamIconUrl + '" />', win: 0, loss: 0 };
+								found.push(tid2);
+							}
+							var mr = matches[i].MatchResults.slice(-1)[0];
+							if(mr.PointsTeam1 - mr.PointsTeam2 > 0) {
+								++(teams[tid1].win);
+								++(teams[tid2].loss);
+							}
+							else if(mr.PointsTeam1 - mr.PointsTeam2 < 0) {
+								++(teams[tid2].win);
+								++(teams[tid1].loss);
+							}
+						}
+					}
+					count = 0;
+					for(k in teams) {
+						var tr = '<tr> \
+							<td>' + (++count) + '</td> \
+							<td>' + teams[k].ico + '</td> \
+							<td>' + teams[k].name + '</td> \
+							<td>' + teams[k].win + '</td> \
+							<td>' + teams[k].loss + '</td> \
+						</tr>';
+						$("#table-win-loss-ratio tbody").append(tr);
+					}
+				}
+
+				function retrieve_data( ) {
+					$.ajax({
+						url: "https://www.openligadb.de/api/getmatchdata/bl1/" + year,
+						typeData: "json",
+						success: function(result) { matches = result; },
+						async: false
+					});
+				}
+
+				retrieve_data( );
+				build_table_next_up_coming_matches( );
+				build_table_all_matches( );
+				build_table_win_loss_ratio( );
+			});
+		</script>
+	</body>
+</html>
